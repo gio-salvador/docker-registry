@@ -9,13 +9,14 @@ services:
       - certs:/certs
     entrypoint: >
       /bin/sh -c '
-      apt install python3-pip;
-      pip3 install certbot-dns-cloudflare;
-      echo "dns_cloudflare_api_token = $CF_API_TOKEN" > /etc/letsencrypt/cloudflare.ini;
-      chmod 600 /etc/letsencrypt/cloudflare.ini;
-      certbot certonly --dns-cloudflare --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini
-      --non-interactive --agree-tos --email $EMAIL -d $DOMAIN;
-      cp -f $(find /etc/letsencrypt/ -name "fullchain?.pem") /certs/fullchain.pem;
+      (apk update && apk add --no-cache python3 py3-pip) ||
+      (apt update && apt install -y python3-pip) &&
+      pip3 install certbot-dns-cloudflare &&
+      echo "dns_cloudflare_api_token = $CF_API_TOKEN" > /etc/letsencrypt/cloudflare.ini &&
+      chmod 600 /etc/letsencrypt/cloudflare.ini &&
+      certbot certonly --dns-cloudflare --dns-cloudflare-credentials
+      /etc/letsencrypt/cloudflare.ini --non-interactive --agree-tos -m $EMAIL -d $DOMAIN &&
+      cp -f $(find /etc/letsencrypt/ -name "fullchain?.pem") /certs/fullchain.pem &&
       cp -f $(find /etc/letsencrypt/ -name "privkey?.pem") /certs/privkey.pem'
     environment:
       - EMAIL
@@ -23,30 +24,23 @@ services:
       - CF_API_TOKEN
 
   registry:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: ${DOCKER_REGISTRY_ADDR}:latest
+    image: registry:2
     container_name: secure-registry
     ports:
       - 5001:5000
-    environment:
-      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/fullchain.pem
-      REGISTRY_HTTP_TLS_KEY: /certs/privkey.pem
-      REGISTRY_AUTH: htpasswd
-      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
-      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
     volumes:
       - registry-data:/var/lib/registry
       - ./config/htpasswd:/auth/htpasswd
       - certs:/certs
     entrypoint: >
       /bin/sh -c '
-      USERNAME=${USERNAME:-admin};
-      PASSWORD=${PASSWORD:-password};
-      if [ ! -f /auth/htpasswd ]; then
-          htpasswd -Bbn $USERNAME $PASSWORD > /auth/htpasswd;
-      fi;
+      REGISTRY_HTTP_TLS_CERTIFICATE=/certs/fullchain.pem;
+      REGISTRY_HTTP_TLS_KEY=/certs/privkey.pem;
+      REGISTRY_AUTH=htpasswd;
+      REGISTRY_AUTH_HTPASSWD_REALM="Registry Realm";
+      REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd;
+      mkdir -p /certs /auth /var/lib/registry /etc/docker/certs /etc/letsencrypt;
+      apk add --no-cache openssl apache2-utils;
       registry serve /etc/docker/registry/config.yml'
     depends_on:
       - certbot
