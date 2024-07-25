@@ -9,10 +9,6 @@ services:
       - certs:/certs
     entrypoint: >
       /bin/sh -c '
-      echo EMAIL = $EMAIL &&
-      echo DOMAIN = $DOMAIN &&
-      echo CF_API_TOKEN = $CF_API_TOKEN &&
-      env | sort &&
       (apk update && apk add --no-cache python3 py3-pip) ||
       (apt update && apt install -y python3-pip) &&
       pip3 install certbot-dns-cloudflare &&
