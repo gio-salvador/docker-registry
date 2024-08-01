@@ -1,4 +1,4 @@
-# Secure Docker Registry with Let's Encrypt and Cloudflare
+# Secure Docker Registry with Let's Encrypt and Cloudflare DNS
 
 This repository sets up a secure Docker registry using Docker Compose, Let's Encrypt for SSL certificates, and Cloudflare for DNS. The setup includes automatic certificate renewal and user authentication.
 
